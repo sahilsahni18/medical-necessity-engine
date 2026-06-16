@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Medical Necessity Assistant</title>
+<style>
+  :root {
+    --bg:        #eef3fa;
+    --bg-2:      #f7faff;
+    --surface:   #ffffff;
+    --ink:       #122039;
+    --ink-2:     #2c3a52;
+    --muted:     #66738a;
+    --faint:     #95a1b5;
+    --line:      #e3e9f2;
+    --line-soft: #eef2f8;
+    --accent:    #1862c6;
+    --accent-ink:#0f4a9c;
+    --accent-2:  #3f86e0;
+    --accent-soft:#e9f1fd;
+    --accent-soft2:#dcebfb;
+    --low-bg:#e6f5ec;  --low-fg:#157f43;  --low-bar:#27a35e;
+    --med-bg:#fdf2d6;  --med-fg:#8a6512;  --med-bar:#e0a92b;
+    --high-bg:#fbe7e7; --high-fg:#b3261e; --high-bar:#dc4a42;
+    --radius:16px;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --shadow: 0 1px 2px rgba(18,32,57,.04), 0 8px 24px rgba(18,32,57,.05);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    margin:0; color:var(--ink); line-height:1.5; -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1100px 420px at 50% -180px, var(--accent-soft) 0%, rgba(233,241,253,0) 70%),
+      var(--bg);
+    min-height:100vh;
+  }
+  svg { display:block; }
+
+  /* ---------- header ---------- */
+  header { background:rgba(255,255,255,.72); backdrop-filter:saturate(1.4) blur(8px);
+    border-bottom:1px solid var(--line); }
+  .head-inner { max-width:940px; margin:0 auto; padding:18px 24px;
+    display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .mark { width:36px; height:36px; flex:0 0 auto; border-radius:10px;
+    background:linear-gradient(150deg,var(--accent-2),var(--accent)); position:relative;
+    box-shadow:0 4px 12px rgba(24,98,198,.28); }
+  .mark::before, .mark::after { content:""; position:absolute; background:#fff; border-radius:1.5px; }
+  .mark::before { width:15px; height:3px; top:16.5px; left:10.5px; }
+  .mark::after  { width:3px; height:15px; top:10.5px; left:16.5px; }
+  .head-text { margin-right:auto; }
+  .head-text h1 { margin:0; font-size:17px; font-weight:680; letter-spacing:-.01em; }
+  .head-text p  { margin:2px 0 0; color:var(--muted); font-size:12.5px; }
+  .sources { display:flex; align-items:center; gap:7px; flex-wrap:wrap; }
+  .sources .lbl { font-size:10.5px; font-weight:650; letter-spacing:.07em; text-transform:uppercase; color:var(--faint); margin-right:2px; }
+  .src { font-family:var(--mono); font-size:11px; font-weight:600; color:var(--accent-ink);
+    background:var(--accent-soft); border:1px solid var(--accent-soft2);
+    padding:3px 8px; border-radius:7px; }
+
+  /* ---------- shell ---------- */
+  main { max-width:940px; margin:0 auto; padding:30px 24px 64px; }
+  .lede { text-align:center; max-width:560px; margin:6px auto 26px; }
+  .lede h2 { margin:0 0 8px; font-size:26px; line-height:1.2; font-weight:720; letter-spacing:-.02em; }
+  .lede p { margin:0; color:var(--muted); font-size:14px; }
+
+  /* ---------- tabs ---------- */
+  .tabs { display:flex; gap:6px; padding:5px; background:var(--surface);
+    border:1px solid var(--line); border-radius:13px; width:fit-content; margin:0 auto 22px;
+    box-shadow:var(--shadow); }
+  .tab { display:flex; align-items:center; gap:8px; border:0; background:transparent;
+    color:var(--muted); font:inherit; font-weight:600; font-size:13.5px;
+    padding:9px 18px; border-radius:9px; cursor:pointer; transition:.15s; }
+  .tab svg { width:16px; height:16px; }
+  .tab:hover { color:var(--ink-2); }
+  .tab.is-active { background:var(--accent); color:#fff; box-shadow:0 3px 10px rgba(24,98,198,.3); }
+
+  /* ---------- card ---------- */
+  .card { background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+    padding:26px; box-shadow:var(--shadow); animation:rise .25s ease both; }
+  .panel[hidden] { display:none; }
+  .card-head { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .card-head .ic { width:30px; height:30px; flex:0 0 auto; border-radius:8px;
+    background:var(--accent-soft); color:var(--accent); display:grid; place-items:center; }
+  .card-head .ic svg { width:17px; height:17px; }
+  .card-head h3 { margin:0; font-size:16px; font-weight:670; }
+  .card-sub { margin:0 0 18px 40px; color:var(--muted); font-size:13px; }
+
+  /* ---------- chips ---------- */
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
+  .chip { border:1px solid var(--line); background:var(--bg-2); color:var(--ink-2);
+    font:inherit; font-size:12.5px; font-weight:500; padding:6px 12px; border-radius:999px;
+    cursor:pointer; transition:.14s; text-align:left; }
+  .chip:hover { border-color:var(--accent-2); color:var(--accent-ink); background:var(--accent-soft); }
+  .chips-label { font-size:11px; font-weight:650; letter-spacing:.05em; text-transform:uppercase;
+    color:var(--faint); margin:0 0 8px; }
+
+  /* ---------- fields ---------- */
+  label { display:block; font-size:11px; font-weight:650; letter-spacing:.04em; text-transform:uppercase;
+    color:var(--muted); margin:14px 0 5px; }
+  input, textarea, select { width:100%; padding:11px 13px; border:1px solid var(--line);
+    border-radius:10px; font:inherit; color:var(--ink); background:#fcfdff; transition:.15s; }
+  input::placeholder, textarea::placeholder { color:#aab4c4; }
+  textarea { min-height:60px; resize:vertical; }
+  #q { min-height:84px; }
+  input:focus, textarea:focus, select:focus { outline:none; border-color:var(--accent);
+    box-shadow:0 0 0 3px var(--accent-soft); background:#fff; }
+  .row { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+
+  /* ---------- button ---------- */
+  .btn { margin-top:18px; padding:11px 22px; border:0; border-radius:10px; cursor:pointer;
+    font:inherit; font-weight:650; color:#fff;
+    background:linear-gradient(150deg,var(--accent-2),var(--accent));
+    box-shadow:0 4px 14px rgba(24,98,198,.28); transition:.15s; display:inline-flex; align-items:center; gap:8px; }
+  .btn svg { width:16px; height:16px; }
+  .btn:hover:not(:disabled) { filter:brightness(1.05); box-shadow:0 6px 18px rgba(24,98,198,.34); }
+  .btn:focus-visible { outline:none; box-shadow:0 0 0 3px var(--accent-soft); }
+  .btn:disabled { opacity:.55; cursor:default; box-shadow:none; }
+
+  /* ---------- output ---------- */
+  .out { margin-top:20px; font-size:14px; }
+  .placeholder { display:flex; align-items:center; gap:9px; color:var(--faint); font-size:13px;
+    border:1px dashed var(--line); border-radius:11px; padding:16px; }
+  .placeholder svg { width:17px; height:17px; flex:0 0 auto; }
+  .loading { display:inline-flex; align-items:center; gap:9px; color:var(--muted); font-size:13px; }
+  .spin { width:15px; height:15px; border:2px solid var(--accent-soft2); border-top-color:var(--accent);
+    border-radius:50%; animation:spin .7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  @keyframes rise { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+
+  .result { border:1px solid var(--line); border-radius:13px; overflow:hidden;
+    animation:rise .22s ease both; background:var(--surface); }
+  .result-body { padding:16px 18px; }
+  .res-label { font-size:11px; font-weight:650; letter-spacing:.05em; text-transform:uppercase; color:var(--faint); }
+  .ans-text { color:var(--ink-2); margin-top:5px; }
+  .block { margin-top:15px; }
+
+  /* verdict strip */
+  .verdict { display:flex; flex-wrap:wrap; align-items:center; gap:22px;
+    padding:14px 18px; border-bottom:1px solid var(--line-soft); background:var(--bg-2); }
+  .verdict .stat { display:flex; flex-direction:column; gap:6px; }
+  .badge { display:inline-flex; align-items:center; padding:4px 12px; border-radius:999px;
+    font-size:12.5px; font-weight:680; letter-spacing:.01em; text-transform:capitalize; width:fit-content; }
+  .low{background:var(--low-bg);color:var(--low-fg);} .medium{background:var(--med-bg);color:var(--med-fg);} .high{background:var(--high-bg);color:var(--high-fg);}
+  .meter { display:flex; gap:4px; align-items:center; }
+  .seg { width:26px; height:7px; border-radius:3px; background:var(--line); }
+  .fill-low{background:var(--low-bar);} .fill-medium{background:var(--med-bar);} .fill-high{background:var(--high-bar);}
+
+  ul.gaps { margin:6px 0 0; padding-left:2px; list-style:none; }
+  ul.gaps li { position:relative; padding-left:20px; margin:6px 0; color:var(--ink-2); }
+  ul.gaps li::before { content:""; position:absolute; left:4px; top:8px; width:6px; height:6px;
+    border-radius:50%; background:var(--accent-2); }
+  ul.gaps li.none { color:var(--low-fg); }
+  ul.gaps li.none::before { background:var(--low-bar); }
+
+  .flag { display:flex; gap:10px; margin-top:12px; font-size:13px; color:var(--med-fg);
+    background:var(--med-bg); border-radius:10px; padding:11px 13px; }
+  .flag svg { width:17px; height:17px; flex:0 0 auto; margin-top:1px; }
+
+  /* citations */
+  .cites { margin-top:16px; }
+  .cites > .res-label { display:flex; align-items:center; gap:7px; margin-bottom:9px; }
+  .cites > .res-label svg { width:14px; height:14px; color:var(--accent); }
+  .cite { border:1px solid var(--line-soft); border-left:3px solid var(--accent);
+    border-radius:9px; padding:10px 14px; background:var(--surface); margin-bottom:9px; }
+  .cite:last-child { margin-bottom:0; }
+  .cite-head { font-family:var(--mono); font-size:12px; color:var(--ink); }
+  .cite-set { color:var(--accent); font-weight:600; }
+  .cite-loc { color:var(--muted); }
+  .cite-snip { display:block; margin-top:6px; font-size:12.5px; color:var(--muted); font-style:italic; line-height:1.45; }
+
+  .error { display:flex; gap:10px; color:var(--high-fg); background:var(--high-bg);
+    border-radius:10px; padding:12px 14px; font-size:13px; }
+  .error svg { width:17px; height:17px; flex:0 0 auto; margin-top:1px; }
+
+  footer { text-align:center; color:var(--faint); font-size:11.5px; padding:8px 24px 32px; }
+
+  @media (max-width:600px){
+    .row{ grid-template-columns:1fr; }
+    .card{ padding:20px; }
+    .head-text{ margin-right:0; }
+    .sources{ width:100%; }
+    .lede h2{ font-size:22px; }
+  }
+  @media (prefers-reduced-motion: reduce){
+    .card,.result{animation:none;} .spin{animation:none;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div class="head-inner">
+    <div class="mark" aria-hidden="true"></div>
+    <div class="head-text">
+      <h1>Medical Necessity Assistant</h1>
+      <p>Grounded answers for E/M coding, denial management, and JAWDA compliance.</p>
+    </div>
+    <div class="sources">
+      <span class="lbl">Grounded in</span>
+      <span class="src">1997 CMS</span>
+      <span class="src">AMA 2021</span>
+      <span class="src">JAWDA</span>
+      <span class="src">HAAD</span>
+    </div>
+  </div>
+</header>
+
+<main>
+  <div class="lede">
+    <h2>Ask the rulebooks, check a claim</h2>
+    <p>Every answer cites the exact guideline it came from — and says so plainly when the documents don’t cover it.</p>
+  </div>
+
+  <div class="tabs" role="tablist" aria-label="Tools">
+    <button class="tab is-active" data-tab="ask" role="tab" onclick="showTab('ask')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      Ask a question
+    </button>
+    <button class="tab" data-tab="encounter" role="tab" onclick="showTab('encounter')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      Check an encounter
+    </button>
+  </div>
+
+  <!-- ============ ASK ============ -->
+  <section class="card panel" data-panel="ask" role="tabpanel">
+    <div class="card-head">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></span>
+      <h3>Ask a coding or compliance question</h3>
+    </div>
+    <p class="card-sub">Free-text questions about E/M levels, documentation, supersession, or JAWDA scoring.</p>
+
+    <p class="chips-label">Try one</p>
+    <div class="chips">
+      <button class="chip" onclick="setQ(this.textContent)">Is hypertension a stable chronic illness under AMA 2021?</button>
+      <button class="chip" onclick="setQ(this.textContent)">What does a 99214 require under AMA 2021?</button>
+      <button class="chip" onclick="setQ(this.textContent)">What score is deducted if the LAMA form is missing?</button>
+      <button class="chip" onclick="setQ(this.textContent)">What must every patient encounter document?</button>
+      <button class="chip" onclick="setQ(this.textContent)">What is the reimbursement in AED for a 99214?</button>
+    </div>
+
+    <textarea id="q" placeholder="e.g. Is hypertension a stable chronic illness under AMA 2021?"></textarea>
+    <button class="btn" id="askBtn" onclick="ask()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+      Ask
+    </button>
+    <div class="out" id="askOut">
+      <div class="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        The answer and its cited sources will appear here.
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ENCOUNTER ============ -->
+  <section class="card panel" data-panel="encounter" role="tabpanel" hidden>
+    <div class="card-head">
+      <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+      <h3>Analyze a patient encounter</h3>
+    </div>
+    <p class="card-sub">Paste an encounter and a billed code to pre-check support, documentation gaps, and denial risk.</p>
+
+    <p class="chips-label">Load a sample scenario</p>
+    <div class="chips">
+      <button class="chip" onclick="loadScenario('supported')">Supported follow-up</button>
+      <button class="chip" onclick="loadScenario('overcoded')">Over-coded visit</button>
+      <button class="chip" onclick="loadScenario('missing')">Missing documentation</button>
+      <button class="chip" onclick="loadScenario('inpatient')">Non-outpatient code</button>
+    </div>
+
+    <div class="row">
+      <div><label>Billed code</label><input id="code" value="99214" /></div>
+      <div><label>Visit type</label><input id="vtype" value="outpatient" /></div>
+    </div>
+    <label>Chief complaint</label><input id="cc" value="Follow-up of diabetes and hypertension" />
+    <label>Diagnoses (comma separated)</label>
+    <input id="dx" value="Type 2 diabetes poorly controlled, Essential hypertension stable" />
+    <label>Procedures (comma separated)</label><input id="px" value="" />
+    <label>HPI</label><textarea id="hpi">55F, 3-month follow-up. Blood sugars rising despite metformin; HTN well controlled on lisinopril.</textarea>
+    <label>Exam</label><textarea id="exam">Vitals stable. General, cardiovascular and respiratory exam unremarkable.</textarea>
+    <label>Assessment</label><textarea id="assess">Uncontrolled T2DM - increased metformin, added empagliflozin. Stable HTN - continue.</textarea>
+    <label>Documented total time (minutes, optional)</label><input id="time" type="number" placeholder="" />
+    <button class="btn" id="anBtn" onclick="analyze()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      Analyze
+    </button>
+    <div class="out" id="anOut">
+      <div class="placeholder">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+        The coding verdict, gaps, and denial risk will appear here.
+      </div>
+    </div>
+  </section>
+
+  <footer>For coding decision support only — not a substitute for professional clinical or billing judgment.</footer>
+</main>
+
+<script>
+/* ---------- tabs ---------- */
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(t => t.classList.toggle('is-active', t.dataset.tab === name));
+  document.querySelectorAll('.panel').forEach(p => p.hidden = (p.dataset.panel !== name));
+}
+function setQ(t){ const q = document.getElementById('q'); q.value = t.trim(); q.focus(); }
+
+/* ---------- encounter scenarios ---------- */
+const SCENARIOS = {
+  supported: { code:"99214", vtype:"outpatient", cc:"Follow-up of diabetes and hypertension",
+    dx:"Type 2 diabetes poorly controlled, Essential hypertension stable", px:"",
+    hpi:"55F, 3-month follow-up. Blood sugars rising despite metformin; HTN well controlled on lisinopril.",
+    exam:"Vitals stable. General, cardiovascular and respiratory exam unremarkable.",
+    assess:"Uncontrolled T2DM - increased metformin, added empagliflozin. Stable HTN - continue.", time:"" },
+  overcoded: { code:"99215", vtype:"outpatient", cc:"Mild runny nose for 2 days",
+    dx:"Common cold", px:"",
+    hpi:"Clear runny nose, no fever.", exam:"Nose mildly congested, otherwise normal.",
+    assess:"Viral cold; advised fluids and rest.", time:"" },
+  missing: { code:"99214", vtype:"outpatient", cc:"Diabetes follow-up",
+    dx:"Type 2 diabetes poorly controlled", px:"",
+    hpi:"Sugars rising on metformin.", exam:"", assess:"", time:"" },
+  inpatient: { code:"99223", vtype:"inpatient", cc:"Admitted for pneumonia",
+    dx:"Community-acquired pneumonia", px:"",
+    hpi:"Fever, productive cough, hypoxia.", exam:"Crackles right base.",
+    assess:"CAP, admit, IV antibiotics.", time:"" }
+};
+function loadScenario(name){
+  const s = SCENARIOS[name]; if(!s) return;
+  document.getElementById('code').value  = s.code;
+  document.getElementById('vtype').value = s.vtype;
+  document.getElementById('cc').value    = s.cc;
+  document.getElementById('dx').value    = s.dx;
+  document.getElementById('px').value    = s.px;
+  document.getElementById('hpi').value   = s.hpi;
+  document.getElementById('exam').value  = s.exam;
+  document.getElementById('assess').value= s.assess;
+  document.getElementById('time').value  = s.time;
+}
+
+/* ---------- rendering helpers ---------- */
+function citeHtml(c){
+  if(!c || !c.length) return "";
+  const items = c.map(x =>
+    `<div class="cite"><div class="cite-head">` +
+      `<span class="cite-set">${x.guideline_set}</span> — ${x.source_document}` +
+      `${x.location ? `<span class="cite-loc">, ${x.location}</span>` : ""}` +
+    `</div>${x.snippet ? `<span class="cite-snip">“${x.snippet}”</span>` : ""}</div>`
+  ).join("");
+  return `<div class="cites"><div class="res-label">` +
+    `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>` +
+    `Sources</div>${items}</div>`;
+}
+function riskBadge(level){
+  const safe = ["low","medium","high"].includes(level) ? level : "medium";
+  return `<span class="badge ${safe}">${level}</span>`;
+}
+function riskMeter(level){
+  const order = ["low","medium","high"];
+  const idx = order.indexOf(level);
+  const cls = idx >= 0 ? level : "medium";
+  let bars = "";
+  for(let i=0;i<3;i++) bars += `<span class="seg ${i <= idx ? "fill-"+cls : ""}"></span>`;
+  return `<div class="meter" title="Denial risk: ${level}">${bars}</div>`;
+}
+function supportBadge(v){
+  const s = String(v).toLowerCase();
+  const yes = (v === true || s === "true" || s === "supported" || s === "yes");
+  return `<span class="badge ${yes ? "low" : "high"}">${v}</span>`;
+}
+function loadingHtml(text){ return `<span class="loading"><span class="spin"></span>${text}</span>`; }
+function errorHtml(e){
+  return `<div class="error"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>Couldn’t reach the server. ${e}</div>`;
+}
+
+/* ---------- API: /ask ---------- */
+async function ask(){
+  const btn = document.getElementById('askBtn'), out = document.getElementById('askOut');
+  const q = document.getElementById('q').value.trim(); if(!q) return;
+  btn.disabled = true; out.innerHTML = loadingHtml("Searching the guidelines…");
+  try {
+    const r = await fetch('/ask', {method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({question:q})});
+    const d = await r.json();
+    const flag = d.insufficient_evidence
+      ? `<div class="flag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>The documents don’t contain enough information to answer this.</div>`
+      : "";
+    out.innerHTML =
+      `<div class="result"><div class="result-body">` +
+        `<div class="res-label">Answer</div><div class="ans-text">${d.answer}</div>` +
+      `</div></div>` + flag + citeHtml(d.citations || []);
+  } catch(e){ out.innerHTML = errorHtml(e); }
+  finally { btn.disabled = false; }
+}
+
+/* ---------- API: /analyze-encounter ---------- */
+async function analyze(){
+  const btn = document.getElementById('anBtn'), out = document.getElementById('anOut');
+  btn.disabled = true; out.innerHTML = loadingHtml("Checking against the rules engine…");
+  const split = s => s.split(',').map(x=>x.trim()).filter(Boolean);
+  const t = document.getElementById('time').value;
+  const body = {
+    visit_type: document.getElementById('vtype').value,
+    chief_complaint: document.getElementById('cc').value,
+    diagnoses: split(document.getElementById('dx').value),
+    procedures: split(document.getElementById('px').value),
+    documentation: {
+      HPI: document.getElementById('hpi').value,
+      exam: document.getElementById('exam').value,
+      assessment: document.getElementById('assess').value,
+      time_minutes: t ? parseInt(t) : null
+    },
+    billed_code: document.getElementById('code').value.trim()
+  };
+  try {
+    const r = await fetch('/analyze-encounter', {method:'POST',
+      headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)});
+    const d = await r.json();
+    const gapList = d.documentation_gaps || [];
+    const gaps = gapList.length
+      ? gapList.map(g=>`<li>${g}</li>`).join("")
+      : `<li class="none">None identified.</li>`;
+    out.innerHTML =
+      `<div class="result">` +
+        `<div class="verdict">` +
+          `<div class="stat"><span class="res-label">Supports billed code</span>${supportBadge(d.supports_billed_code)}</div>` +
+          `<div class="stat"><span class="res-label">Denial risk</span>` +
+            `<div style="display:flex;align-items:center;gap:10px;">${riskBadge(d.denial_risk)}${riskMeter(d.denial_risk)}</div></div>` +
+        `</div>` +
+        `<div class="result-body">` +
+          `<div class="res-label">Assessment</div><div class="ans-text">${d.code_assessment}</div>` +
+          `<div class="block"><div class="res-label">Why</div><div class="ans-text">${d.denial_risk_rationale}</div></div>` +
+          `<div class="block"><div class="res-label">Documentation gaps</div><ul class="gaps">${gaps}</ul></div>` +
+        `</div>` +
+      `</div>` + citeHtml(d.citations || []);
+  } catch(e){ out.innerHTML = errorHtml(e); }
+  finally { btn.disabled = false; }
+}
+</script>
+</body>
+</html>
