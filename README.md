@@ -3,8 +3,11 @@
 > A clinical AI platform for healthcare providers in the UAE to understand E/M coding levels, manage claim denials, and stay compliant with JAWDA audit requirements — answering only from the provided guideline documents, always with an exact citation.
 
 **Live Application:** https://medical-necessity-engine-na1x.onrender.com/
+
 **API Documentation:** https://medical-necessity-engine-na1x.onrender.com/docs
+
 **Health Check:** https://medical-necessity-engine-na1x.onrender.com/health
+
 **Repository:** https://github.com/sahilsahni18/medical-necessity-engine
 
 > The UI and the API are served by a single FastAPI service on Render — the web page at `/` calls the same backend that exposes the API.
